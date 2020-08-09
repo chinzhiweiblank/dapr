@@ -183,17 +183,17 @@ dapr.yaml: check-docker-env
 upload-helmchart:
 	export HELM_EXPERIMENTAL_OCI=1; \
 	$(HELM) chart save ${HELM_CHART_ROOT}/${RELEASE_NAME} ${HELM_REGISTRY}/${HELM}/${RELEASE_NAME}:${DAPR_VERSION}; \
-	$(HELM) chart push ${HELM_REGISTRY}/${HELM}/${RELEASE_NAME}:${DAPR_VERSION} 
+	$(HELM) chart push ${HELM_REGISTRY}/${HELM}/${RELEASE_NAME}:${DAPR_VERSION}
 
 ################################################################################
 # Target: docker-deploy-k8s                                                    #
 ################################################################################
 
-docker-deploy-k8s: check-docker-env
+docker-deploy-k8s: check-docker-env check-arch
 	$(info Deploying ${DAPR_REGISTRY}/${RELEASE_NAME}:${DAPR_TAG} to the current K8S context...)
 	$(HELM) install \
 		$(RELEASE_NAME) --namespace=$(DAPR_NAMESPACE) \
-		--set-string global.tag=$(DAPR_TAG) --set-string global.registry=$(DAPR_REGISTRY) --set global.logAsJson=true $(HELM_CHART_DIR)
+		--set-string global.tag=$(DAPR_TAG)-$(TARGET_OS)-$(TARGET_ARCH) --set-string global.registry=$(DAPR_REGISTRY) --set global.logAsJson=true $(HELM_CHART_DIR)
 
 ################################################################################
 # Target: archive                                                              #
@@ -216,9 +216,13 @@ test:
 lint:
 	$(GOLANGCI_LINT) run --timeout=20m
 
+################################################################################
+# Target: codegen                                                              #
+################################################################################
+include tools/codegen.mk
 
 ################################################################################
-# Target: docker                                                                #
+# Target: docker                                                               #
 ################################################################################
 include docker/docker.mk
 
@@ -226,3 +230,4 @@ include docker/docker.mk
 # Target: tests                                                                #
 ################################################################################
 include tests/dapr_tests.mk
+

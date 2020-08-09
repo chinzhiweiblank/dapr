@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/dapr/components-contrib/bindings"
 	"github.com/dapr/components-contrib/pubsub"
@@ -71,9 +70,6 @@ const (
 	secretNameParam      = "key"
 	nameParam            = "name"
 	consistencyParam     = "consistency"
-	retryIntervalParam   = "retryInterval"
-	retryPatternParam    = "retryPattern"
-	retryThresholdParam  = "retryThreshold"
 	concurrencyParam     = "concurrency"
 	daprSeparator        = "||"
 )
@@ -322,7 +318,7 @@ func (a *api) onGetState(reqCtx *fasthttp.RequestCtx) {
 
 	if a.stateStores[storeName] == nil {
 		msg := NewErrorResponse("ERR_STATE_STORE_NOT_FOUND", fmt.Sprintf("state store name: %s", storeName))
-		respondWithError(reqCtx, 401, msg)
+		respondWithError(reqCtx, 400, msg)
 		return
 	}
 
@@ -341,7 +337,7 @@ func (a *api) onGetState(reqCtx *fasthttp.RequestCtx) {
 	resp, err := a.stateStores[storeName].Get(&req)
 	if err != nil {
 		msg := NewErrorResponse("ERR_STATE_GET", err.Error())
-		respondWithError(reqCtx, 500, msg)
+		respondWithError(reqCtx, 400, msg)
 		return
 	}
 	if resp == nil || resp.Data == nil {
@@ -371,18 +367,6 @@ func (a *api) onDeleteState(reqCtx *fasthttp.RequestCtx) {
 
 	concurrency := string(reqCtx.QueryArgs().Peek(concurrencyParam))
 	consistency := string(reqCtx.QueryArgs().Peek(consistencyParam))
-	retryInterval := string(reqCtx.QueryArgs().Peek(retryIntervalParam))
-	retryPattern := string(reqCtx.QueryArgs().Peek(retryPatternParam))
-	retryThredhold := string(reqCtx.QueryArgs().Peek(retryThresholdParam))
-	iRetryInterval := 0
-	iRetryThreshold := 0
-
-	if retryInterval != "" {
-		iRetryInterval, _ = strconv.Atoi(retryInterval)
-	}
-	if retryThredhold != "" {
-		iRetryThreshold, _ = strconv.Atoi(retryThredhold)
-	}
 
 	req := state.DeleteRequest{
 		Key:  a.getModifiedStateKey(key),
@@ -390,11 +374,6 @@ func (a *api) onDeleteState(reqCtx *fasthttp.RequestCtx) {
 		Options: state.DeleteStateOption{
 			Concurrency: concurrency,
 			Consistency: consistency,
-			RetryPolicy: state.RetryPolicy{
-				Interval:  time.Duration(iRetryInterval) * time.Millisecond,
-				Threshold: iRetryThreshold,
-				Pattern:   retryPattern,
-			},
 		},
 	}
 
@@ -465,7 +444,7 @@ func (a *api) onPostState(reqCtx *fasthttp.RequestCtx) {
 	err := a.json.Unmarshal(reqCtx.PostBody(), &reqs)
 	if err != nil {
 		msg := NewErrorResponse("ERR_MALFORMED_REQUEST", err.Error())
-		respondWithError(reqCtx, 402, msg)
+		respondWithError(reqCtx, 400, msg)
 		return
 	}
 
@@ -918,7 +897,7 @@ func (a *api) onPublish(reqCtx *fasthttp.RequestCtx) {
 	span := diag_utils.SpanFromContext(reqCtx)
 	// Populate W3C traceparent to cloudevent envelope
 	corID := diag.SpanContextToW3CString(span.SpanContext())
-	envelope := pubsub.NewCloudEventsEnvelope(uuid.New().String(), a.id, pubsub.DefaultCloudEventType, corID, body)
+	envelope := pubsub.NewCloudEventsEnvelope(uuid.New().String(), a.id, pubsub.DefaultCloudEventType, corID, topic, body)
 
 	b, err := a.json.Marshal(envelope)
 	if err != nil {

@@ -30,6 +30,7 @@ import (
 	// State Stores
 	"github.com/dapr/components-contrib/state"
 	"github.com/dapr/components-contrib/state/aerospike"
+	state_azure_blobstorage "github.com/dapr/components-contrib/state/azure/blobstorage"
 	state_cosmosdb "github.com/dapr/components-contrib/state/azure/cosmosdb"
 	state_azure_tablestorage "github.com/dapr/components-contrib/state/azure/tablestorage"
 	"github.com/dapr/components-contrib/state/cassandra"
@@ -41,6 +42,7 @@ import (
 	"github.com/dapr/components-contrib/state/hazelcast"
 	"github.com/dapr/components-contrib/state/memcached"
 	"github.com/dapr/components-contrib/state/mongodb"
+	"github.com/dapr/components-contrib/state/postgresql"
 	state_redis "github.com/dapr/components-contrib/state/redis"
 	"github.com/dapr/components-contrib/state/sqlserver"
 	"github.com/dapr/components-contrib/state/zookeeper"
@@ -88,6 +90,7 @@ import (
 	"github.com/dapr/components-contrib/bindings/azure/servicebusqueues"
 	"github.com/dapr/components-contrib/bindings/azure/signalr"
 	"github.com/dapr/components-contrib/bindings/azure/storagequeues"
+	"github.com/dapr/components-contrib/bindings/cron"
 	"github.com/dapr/components-contrib/bindings/gcp/bucket"
 	"github.com/dapr/components-contrib/bindings/gcp/pubsub"
 	"github.com/dapr/components-contrib/bindings/http"
@@ -150,6 +153,9 @@ func main() {
 			state_loader.New("consul", func() state.Store {
 				return consul.NewConsulStateStore(logContrib)
 			}),
+			state_loader.New("azure.blobstorage", func() state.Store {
+				return state_azure_blobstorage.NewAzureBlobStorageStore(logContrib)
+			}),
 			state_loader.New("azure.cosmosdb", func() state.Store {
 				return state_cosmosdb.NewCosmosDBStateStore(logContrib)
 			}),
@@ -173,6 +179,9 @@ func main() {
 			}),
 			state_loader.New("gcp.firestore", func() state.Store {
 				return firestore.NewFirestoreStateStore(logContrib)
+			}),
+			state_loader.New("postgresql", func() state.Store {
+				return postgresql.NewPostgreSQLStateStore(logContrib)
 			}),
 			state_loader.New("sqlserver", func() state.Store {
 				return sqlserver.NewSQLServerStateStore(logContrib)
@@ -281,6 +290,9 @@ func main() {
 			bindings_loader.NewInput("twitter", func() bindings.InputBinding {
 				return twitter.NewTwitter(logContrib)
 			}),
+			bindings_loader.NewInput("cron", func() bindings.InputBinding {
+				return cron.NewCron(logContrib)
+			}),
 		),
 		runtime.WithOutputBindings(
 			bindings_loader.NewOutput("aws.sqs", func() bindings.OutputBinding {
@@ -345,6 +357,12 @@ func main() {
 			}),
 			bindings_loader.NewOutput("azure.eventgrid", func() bindings.OutputBinding {
 				return eventgrid.NewAzureEventGrid(logContrib)
+			}),
+			bindings_loader.NewOutput("cron", func() bindings.OutputBinding {
+				return cron.NewCron(logContrib)
+			}),
+			bindings_loader.NewOutput("twitter", func() bindings.OutputBinding {
+				return twitter.NewTwitter(logContrib)
 			}),
 		),
 		runtime.WithHTTPMiddleware(
